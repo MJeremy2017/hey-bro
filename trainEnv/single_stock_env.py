@@ -5,6 +5,7 @@ import gym
 from gym import spaces
 import matplotlib
 import matplotlib.pyplot as plt
+from enum import Enum
 matplotlib.use('Agg')
 
 # shares normalization factor
@@ -18,18 +19,27 @@ TRANSACTION_FEE_PERCENT = 0.002
 REWARD_SCALING = 1e-4
 
 
+class SpaceType(Enum):
+    DISCRETE = 1
+    CONTINUOUS = 2
+
+
 class SingleEnvTrain(gym.Env):
     """A stock trading environment for OpenAI gym"""
     metadata = {'render.modes': ['human']}
 
-    def __init__(self, df, features, offset=200, day=0, verbose=False):
+    def __init__(self, df, features, offset=200, day=0, space_type=SpaceType.CONTINUOUS, verbose=False):
         self.day = day
         self.df = df[offset:].reset_index(drop=True)
         self.features = features
         self.verbose = verbose
+        self.space_type = space_type
 
         # action_space normalization and shape is STOCK_DIM
-        self.action_space = spaces.Box(low=-1, high=1, shape=(STOCK_DIM,))
+        if space_type == SpaceType.CONTINUOUS:
+            self.action_space = spaces.Box(low=-1, high=1, shape=(STOCK_DIM,))
+        if space_type == SpaceType.DISCRETE:
+            self.action_space = spaces.Discrete(2*HMAX_NORMALIZE)
         # Shape = 11: [balance] + [price 1] + [shares 1]
         # + [macd 1] + [macds 1] + [rsi 1] + [ema_50 1] + [ema_20 1] + [atr 1] + [cci 1] + [dx 1]
         self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(11,))  # state space
@@ -111,10 +121,16 @@ class SingleEnvTrain(gym.Env):
             return self.state, self.reward, self.terminal, {}
 
         else:
-            actions = actions * HMAX_NORMALIZE  # [-HMAX_NORMALIZE, HMAX_NORMALIZE]
+            if self.space_type == SpaceType.CONTINUOUS:
+                actions = actions * HMAX_NORMALIZE  # [-HMAX_NORMALIZE, HMAX_NORMALIZE]
+            if self.space_type == SpaceType.DISCRETE:
+                actions -= HMAX_NORMALIZE
+                actions = np.array([actions])
+
             begin_total_asset = self.state[0] + \
                                 sum(np.array(self.state[1:(STOCK_DIM + 1)]) * np.array(
                                     self.state[(STOCK_DIM + 1):(STOCK_DIM * 2 + 1)]))
+            begin_balance = self.state[0]
 
             argsort_actions = np.argsort(actions)
 
@@ -140,11 +156,14 @@ class SingleEnvTrain(gym.Env):
             end_total_asset = self.state[0] + \
                               sum(np.array(self.state[1:(STOCK_DIM + 1)]) * np.array(
                                   self.state[(STOCK_DIM + 1):(STOCK_DIM * 2 + 1)]))
+
+            end_balance = self.state[0]
             if self.verbose:
                 print(f'begin total asset={round(begin_total_asset, 2)} | end total asset={round(end_total_asset, 2)}')
             self.asset_memory.append(end_total_asset)
 
-            self.reward = end_total_asset - begin_total_asset
+            # self.reward = end_total_asset - begin_total_asset
+            self.reward = end_balance - begin_balance
             self.rewards_memory.append(self.reward)
             self.reward = self.reward * REWARD_SCALING
 
