@@ -47,7 +47,7 @@ def train_PPO(env_train, timesteps=50000):
 def train_DQN(env_train, timesteps=50000):
     """DQN model"""
     start = time.time()
-    model = DQN('MlpPolicy', env_train, batch_size=32)
+    model = DQN('MlpPolicy', env_train, batch_size=32, tensorboard_log='/Users/yuezhang/PycharmProjects/hey-bro/results/log/')
 
     model.learn(total_timesteps=timesteps)
     end = time.time()
@@ -57,7 +57,7 @@ def train_DQN(env_train, timesteps=50000):
 
 if __name__ == "__main__":
     # from stable_baselines.common.env_checker import check_env
-    data_path = "data/btc_5min_20000.csv"
+    data_path = "/Users/yuezhang/PycharmProjects/hey-bro/data/btc_5min_20000.csv"
     model_path = "trainedModels"
 
     # df = pd.read_csv(data_path)
@@ -70,5 +70,5 @@ if __name__ == "__main__":
     # model = run_PPO(data_path, "Model-PPO", model_path, timesteps=500000)
     model_name = 'Model_DQN'
     print(f"running model {model_name}")
-    model = run_model(train_DQN, SpaceType.DISCRETE, data_path, model_name, model_path, timesteps=500000)
+    model = run_model(train_DQN, SpaceType.DISCRETE, data_path, model_name, model_path, timesteps=5000000)
     gc.collect()
