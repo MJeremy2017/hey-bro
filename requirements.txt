@@ -7,3 +7,4 @@ requests
 matplotlib
 stable-baselines[mpi]
 tensorflow==1.15
+TA-Lib
